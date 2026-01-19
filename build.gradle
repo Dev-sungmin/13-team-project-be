@@ -2,6 +2,10 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '3.5.9'
 	id 'io.spring.dependency-management' version '1.1.7'
+
+    id 'checkstyle'                                        // Stage 1: Lint
+    id 'com.github.spotbugs' version '6.0.26'              // Stage 3: Static Analysis
+    id 'jacoco'                                            // Stage 4: Coverage
 }
 
 group = 'com.matchimban'
@@ -36,8 +40,71 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    testImplementation 'com.h2database:h2'    // CI 테스트용
 }
 
+// =============================================================================
+// 테스트 설정
+// =============================================================================
 tasks.named('test') {
-	useJUnitPlatform()
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport
+}
+
+// =============================================================================
+// Checkstyle 설정
+// =============================================================================
+checkstyle {
+    toolVersion = '10.20.1'
+    configFile = file("${rootDir}/config/checkstyle/checkstyle.xml")
+    maxWarnings = 0
+}
+
+// =============================================================================
+// SpotBugs 설정
+// =============================================================================
+spotbugs {
+    toolVersion = '4.8.6'
+    // excludeFilter = file("${rootDir}/config/spotbugs/exclude.xml")
+}
+
+tasks.withType(com.github.spotbugs.snom.SpotBugsTask) {
+    reports {
+        html.required = true
+        xml.required = false
+    }
+}
+
+// =============================================================================
+// JaCoCo 설정
+// =============================================================================
+jacoco {
+    toolVersion = '0.8.12'
+}
+
+jacocoTestReport {
+    dependsOn test
+    finalizedBy jacocoTestCoverageVerification
+    reports {
+        html.required = true
+        xml.required = true
+    }
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            element = 'PACKAGE'
+            includes = [
+                    // TODO: 핵심 패키지 확정 후 수정
+                   // 'com.matchimban.*.service.vote.*',
+                 //   'com.matchimban.*.service.restaurant.*'
+            ]
+            limit {
+                counter = 'LINE'
+                minimum = 0.80
+            }
+        }
+    }
 }
